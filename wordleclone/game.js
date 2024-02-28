@@ -279,7 +279,6 @@ function startGame(daily,hardMode=false,seed = false,num = false) {
 }
 
 function numWordsTransformFunc(x) {
-    console.log(x)
     return Math.tan(x*2.5-1.15)+4.5
 }
 
@@ -354,7 +353,7 @@ class MultiWordGame {
         if (startOnCreation) {
             this.start();
         }
-        //console.log(words);
+        console.log(this);
     }
     start() {
         this.initContainer();
