@@ -267,12 +267,14 @@ function replayDialog() {
 }
 
 function startGame(daily,hardMode=false,seed = false,num = false) {
+    console.log(daily,hardMode,seed,num)
     let gameSeed;
     let numWords = num;
     let rngSeed = seed ? seed.toString() : daily ? generateDailySeed(hardMode) : Math.floor(Math.random()*Number.MAX_SAFE_INTEGER).toString();
     let rng = new Math.seedrandom(rngSeed);
     gameSeed = Math.floor(rng()*4294967295);
     numWords = numWords || Math.floor(numWordsTransformFunc(rng()/(hardMode?1:2)));
+    console.log(numWords,daily,gameSeed,hardMode)
     return new MultiWordGame(document.getElementById("game"),numWords,daily,gameSeed,hardMode);
 }
 
