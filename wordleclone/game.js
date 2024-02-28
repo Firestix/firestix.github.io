@@ -33,8 +33,8 @@ let completedDailies = {normal:false,expert:false};
 async function init() {
     let wlr = await fetch("wordle.txt");
     let cwlr = await fetch("wordlecommon.txt");
-    wordList = WordList.fromArray((await wlr.text()).split('\r\n'));
-    commonWordList = WordList.fromArray((await cwlr.text()).split('\r\n'));
+    wordList = WordList.fromArray((await wlr.text()).split(/\r\n|\r|\n/g));
+    commonWordList = WordList.fromArray((await cwlr.text()).split(/\r\n|\r|\n/g));
     // let gameState = await parseReplayData(getCookie("gameState"));
     // if (gameState) {
     //     let div = document.getElementById("game");
@@ -142,7 +142,7 @@ function customGameDialog() {
         });
     },modal:true,class:"dialogBox custom",openOnCreation:true});
     dialog.addEventListener("close",(e)=>{
-        console.log(e.detail.usingEvent.target)
+        // console.log(e.detail.usingEvent.target)
         if (e.detail.usingEvent.target.innerText == "Play") {
             let hardMode = Number(dialog.body.querySelector("#customWordList").value);
             let seed = dialog.body.querySelector("#customSeed").value == "" ? false : dialog.body.querySelector("#customSeed").value;
@@ -274,7 +274,7 @@ function startGame(daily,hardMode=false,seed = false,num = false) {
     let rng = new Math.seedrandom(rngSeed);
     gameSeed = Math.floor(rng()*4294967295);
     numWords = numWords || Math.floor(numWordsTransformFunc(rng()/(hardMode?1:2)));
-    console.log(numWords,daily,gameSeed,hardMode)
+    // console.log(numWords,daily,gameSeed,hardMode)
     return new MultiWordGame(document.getElementById("game"),numWords,daily,gameSeed,hardMode);
 }
 
@@ -353,7 +353,7 @@ class MultiWordGame {
         if (startOnCreation) {
             this.start();
         }
-        console.log(this);
+        // console.log(this);
     }
     start() {
         this.initContainer();
@@ -399,7 +399,7 @@ class MultiWordGame {
                 this.gameFinished = true;
                 // eatCookie("gameState");
                 if (this.isDaily && !this.isReplay) {
-                    console.log(this.isHard)
+                    // console.log(this.isHard)
                     // let enc = createReplayData(this);
                     // let gameType = this.isHard ? "expert" : "normal";
                     // completedDailies[gameType] = enc;
@@ -420,7 +420,7 @@ class MultiWordGame {
         this.buildUnusedLettersElements();
     }
     keyHandler(e) {
-        console.log(e)
+        // console.log(e)
         this.guessContainer.classList.remove("inpErr");
         if (!this.gameFinished) {
             if (this.gameStarted){
@@ -579,7 +579,7 @@ class MultiWordGame {
         let data = await parseReplayData(replay);
         // console.log(data)
         let settings = data.splice(0,10);
-        console.log(settings,data)
+        // console.log(settings,data)
         let game = new MultiWordGame(elem,settings[3],!!settings[1],settings[0],!!settings[2],true);
         window.setTimeout(()=>{
             game.keyHandler({keyCode:settings[5]})
@@ -819,7 +819,7 @@ function formatTime(mills,useMills = true) {
 
 function calculateAccuracy(gameState) {
     let enterKeys = gameState.replay.slice(10).filter((e,i)=>i%2).filter(e=>e==13).length+1;
-    console.log(enterKeys)
+    // console.log(enterKeys)
     let acc = gameState.guesses.length / enterKeys * 100;
     return acc.toFixed(1) + "%";
 }
@@ -865,7 +865,7 @@ function downloadFile(filename,data) {
 
 function createReplayData(gameState) {
     let replay = gameState.replay;
-    console.log(replay)
+    // console.log(replay)
     let arrayBuffer = new ArrayBuffer(20+((replay.length-10)*5/2));
     let settingsData = new DataView(arrayBuffer,0,20);
     let replayData = new DataView(arrayBuffer,20,arrayBuffer.byteLength-20);
@@ -886,7 +886,7 @@ function createReplayData(gameState) {
         x += 4;
         replayData.setUint8(x++,replay[y++])          // keypress charcode
     }
-    console.log(new Uint8Array(arrayBuffer))
+    // console.log(new Uint8Array(arrayBuffer))
     return arrayBuffer;
 }
 
