@@ -259,7 +259,7 @@ function replayDialog() {
         reader.onloadend = (e)=>{
             let div = document.getElementById("game");
             div.innerHTML = "";
-            console.log(e.target.result)
+            // console.log(e.target.result)
             MultiWordGame.fromReplay(div,e.target.result);
         }
     })
@@ -267,7 +267,7 @@ function replayDialog() {
 }
 
 function startGame(daily,hardMode=false,seed = false,num = false) {
-    console.log(daily,hardMode,seed,num)
+    // console.log(daily,hardMode,seed,num)
     let gameSeed;
     let numWords = num;
     let rngSeed = seed ? seed.toString() : daily ? generateDailySeed(hardMode) : Math.floor(Math.random()*Number.MAX_SAFE_INTEGER).toString();
