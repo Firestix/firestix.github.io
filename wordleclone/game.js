@@ -1,3 +1,10 @@
+let scriptTag = document.getElementById("gameScript");
+let queryData = [...scriptTag.src.matchAll(/[\?&]([^=&]+)(?:=([^&=]+)|)/g)];
+let queryVars = {};
+for (let q of queryData) {
+    queryVars[q[1]] = q[2];
+}
+
 import "./quickElement.js";
 import { DialogBox } from "./dialogBox.js";
 
@@ -41,19 +48,26 @@ async function init() {
 function generateMainPage() {
     let div = document.getElementById("game");
     div.innerHTML = "";
-    div.createChildNode("h1","Wordle Clone");
+    div.createChildNode("h1",(div)=>{
+        div.createChildNode("span","Wordle Clone");
+        div.createChildNode("span",{style:"font-size:10pt"},` v${queryVars["v"]}`);
+    });
     div.createChildNode("div",(div)=>{
         div.createChildNode("span","Based on ")
         div.createChildNode("a",{href:"https://www.nytimes.com/games/wordle/",target:"_blank"},"Wordle");
         div.createChildNode("span"," hosted by ");
         div.createChildNode("a",{href:"https://twitter.com/NYTGames",target:"_blank"},"@NYTGames.");
-    })
+    });
+    div.createChildNode("br")
+    div.createChildNode("button",{class:"smallButton"},"How To Play",(button)=>{
+        button.addEventListener("click",howToPlayDialog);
+    });
     div.createChildNode("h2","Daily");
     div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
         button.addEventListener("click",()=>{
             if (!completedDailies["normal"]) {
                 div.innerHTML = "";
-                startGame(4,true);
+                startGame(true);
             } else {
                 if (confirm("You've already completed today's normal game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
                     downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",completedDailies["normal"])
@@ -65,7 +79,7 @@ function generateMainPage() {
         button.addEventListener("click",()=>{
             if (!completedDailies["expert"]) {
                 div.innerHTML = "";
-                startGame(4,true,true);
+                startGame(true,true);
             } else {
                 if (confirm("You've already completed today's expert game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
                     downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",completedDailies["expert"])
@@ -77,22 +91,67 @@ function generateMainPage() {
     div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
         button.addEventListener("click",()=>{
             div.innerHTML = "";
-            startGame(4,false);
+            startGame(false);
         });
     })
     div.createChildNode("button",{class:"difficultyButton"},"Expert",(button)=>{
         button.addEventListener("click",()=>{
             div.innerHTML = "";
-            startGame(4,false,true);
+            startGame(false,true);
         });
     });
     div.createChildNode("br");
-    div.createChildNode("button",{class:"smallButton"},"How To Play",(button)=>{
-        button.addEventListener("click",howToPlayDialog);
-    });
+    div.createChildNode("button",{class:"smallButton"},"Custom Game",(button)=>{
+        button.addEventListener("click",customGameDialog);
+    })
     div.createChildNode("button",{class:"smallButton"},"View Replay",(button)=>{
         button.addEventListener("click",replayDialog);
     });
+}
+
+function customGameDialog() {
+    dialog = new DialogBox({body:(div)=>{
+        div.createChildNode("h2","Custom Game Settings");
+        div.createChildNode("div",(div)=>{
+            div.createChildNode("span","Word List: ")
+            div.createChildNode("select",{id:"customWordList"},(select)=>{
+                select.createChildNode("option",{value:"0"},"Normal")
+                select.createChildNode("option",{value:"1"},"Expert")
+            });
+        });
+        div.createChildNode("div",(div)=>{
+            div.createChildNode("span","Words to Solve: ")
+            div.createChildNode("input",{type:"number",min:0,max:255,value:4,id:"customNumWords"});
+        });
+        div.createChildNode("div","(Set to 0 for random)");
+        div.createChildNode("div",(div)=>{
+            div.createChildNode("span","Game Seed: ")
+            div.createChildNode("input",{type:"text",id:"customSeed"});
+        });
+        div.createChildNode("div","(Leave blank for random)");
+    },buttons:(div)=>{
+        div.createChildNode("button",{class:"smallButton"},"Play",(button)=>{
+            button.addEventListener("click",(e)=>{
+                dialog.close(e);
+            })
+        });
+        div.createChildNode("button",{class:"smallButton"},"Cancel",(button)=>{
+            button.addEventListener("click",(e)=>{
+                dialog.close(e);
+            })
+        });
+    },modal:true,class:"dialogBox custom",openOnCreation:true});
+    dialog.addEventListener("close",(e)=>{
+        console.log(e.detail.usingEvent.target)
+        if (e.detail.usingEvent.target.innerText == "Play") {
+            let hardMode = Number(dialog.body.querySelector("#customWordList").value);
+            let seed = dialog.body.querySelector("#customSeed").value == "" ? false : dialog.body.querySelector("#customSeed").value;
+            let numWords = Number(dialog.body.querySelector("#customNumWords").value);
+            let div = document.getElementById("game");
+            div.innerHTML = "";
+            startGame(false,hardMode,seed,numWords);
+        }
+    })
 }
 
 function howToPlayDialog() {
@@ -165,7 +224,7 @@ function howToPlayDialog() {
         div.createChildNode("ul",(ul)=>{
             ul.createChildNode("li","Small yellow letters mean that the letter could be in this spot.");
             ul.createChildNode("li","Larger green letters mean that the word has that letter in this spot.");
-            ul.createChildNode("li","Light yellow is the same as yellow, but indicates that you've already found a spot where this letter is used. This is to account for potential duplicate letters.");
+            ul.createChildNode("li","Faded yellow is the same as yellow, but indicates that you've already found a spot where this letter is used. This is to account for potential duplicate letters.");
         });
         div.createChildNode("h3","Results");
         div.createChildNode("ul",(ul)=>{
@@ -196,23 +255,35 @@ function replayDialog() {
     let file = document.quickElement("input",{type:"file",accept:".replay"});
     file.addEventListener("change",(e)=>{
         const reader = new FileReader();
-        reader.readAsText(e.target.files[0]);
+        reader.readAsArrayBuffer(e.target.files[0]);
         reader.onloadend = (e)=>{
             let div = document.getElementById("game");
             div.innerHTML = "";
+            console.log(e.target.result)
             MultiWordGame.fromReplay(div,e.target.result);
         }
     })
     file.click();
 }
 
-function startGame(numWords,daily,hardMode=false,seed = false) {
-    return new MultiWordGame(document.getElementById("game"),numWords,daily,seed,hardMode);
+function startGame(daily,hardMode=false,seed = false,num = false) {
+    let gameSeed;
+    let numWords = num;
+    let rngSeed = seed ? seed.toString() : daily ? generateDailySeed(hardMode) : Math.floor(Math.random()*Number.MAX_SAFE_INTEGER).toString();
+    let rng = new Math.seedrandom(rngSeed);
+    gameSeed = Math.floor(rng()*4294967295);
+    numWords = numWords || Math.floor(numWordsTransformFunc(rng()/(hardMode?1:2)));
+    return new MultiWordGame(document.getElementById("game"),numWords,daily,gameSeed,hardMode);
 }
 
-function generateDailySeed() {
+function numWordsTransformFunc(x) {
+    console.log(x)
+    return Math.tan(x*2.5-1.15)+4.5
+}
+
+function generateDailySeed(hardMode) {
     let today = new Date();
-    return today.getFullYear().toString() + (today.getMonth()+1).toString().padStart(2,"0") + today.getDate().toString().padStart(2,"0");
+    return (hardMode ? "1" : "") + today.getFullYear().toString() + (today.getMonth()+1).toString().padStart(2,"0") + today.getDate().toString().padStart(2,"0");
 }
 
 class WordList extends Array{
@@ -272,7 +343,7 @@ class MultiWordGame {
         this.isDaily = daily;
         this.isHard = hardMode;
         this.isReplay = replaymode;
-        this.gameSeed = this.isDaily && !this.isReplay ? generateDailySeed() : (seed || Math.floor(Math.random()*4294967295).toString());
+        this.gameSeed = seed;
         this.replay.push(Number(this.gameSeed));
         this.replay.push(this.isDaily ? 1 : 0);
         this.replay.push(this.isHard ? 1 : 0);
@@ -348,6 +419,7 @@ class MultiWordGame {
         this.buildUnusedLettersElements();
     }
     keyHandler(e) {
+        console.log(e)
         this.guessContainer.classList.remove("inpErr");
         if (!this.gameFinished) {
             if (this.gameStarted){
@@ -422,7 +494,7 @@ class MultiWordGame {
                                 div.classList.add("wideKey")
                             }
                             div.addEventListener("click",()=>{
-                                this.keyHandler({keyCode:code});
+                                if (!this.isReplay) this.keyHandler({keyCode:code});
                             })
                         }
                         if (!usedLetters.includes(char)) {
@@ -503,25 +575,34 @@ class MultiWordGame {
         game.start();
     }
     static async fromReplay(elem,replay) {
-        // let data = await parseReplayData(replay).map((e,i1)=>{
-        //     return e.split(" ").map((e,i2)=>{
-        //         if (i1 == 0 && i2 == 0) {
-        //             return e;
-        //         } else {
-        //             return Number(e);
-        //         }
-        //     });
-        // });
         let data = await parseReplayData(replay);
-        console.log(data)
-        // let settings = data.splice(0,1)[0];
-        // let game = new MultiWordGame(elem,settings[3],settings[1] ? true : false,settings[0],settings[2] ? true : false,true);
-        // let startTime = data[0][0];
-        // for (let keypress of data) {
-        //     window.setTimeout(()=>{
-        //         game.keyHandler({keyCode:keypress[1]})
-        //     },keypress[0] - startTime)
-        // }
+        // console.log(data)
+        let settings = data.splice(0,10);
+        console.log(settings,data)
+        let game = new MultiWordGame(elem,settings[3],!!settings[1],settings[0],!!settings[2],true);
+        window.setTimeout(()=>{
+            game.keyHandler({keyCode:settings[5]})
+        },150)
+        window.setTimeout(()=>{
+            game.keyHandler({keyCode:settings[6]})
+        },300)
+        window.setTimeout(()=>{
+            game.keyHandler({keyCode:settings[7]})
+        },450)
+        window.setTimeout(()=>{
+            game.keyHandler({keyCode:settings[8]})
+        },600)
+        window.setTimeout(()=>{
+            game.keyHandler({keyCode:settings[9]})
+        },750)
+        window.setTimeout(()=>{
+            game.keyHandler({keyCode:13})
+            for (let x = 0; x < data.length; x+=2) {
+                window.setTimeout(()=>{
+                    game.keyHandler({keyCode:data[x+1]})
+                },data[x])
+            }
+        },900)
     }
 }
 
@@ -736,7 +817,8 @@ function formatTime(mills,useMills = true) {
 }
 
 function calculateAccuracy(gameState) {
-    let enterKeys = gameState.replay.map(e=>e.split(" ")).filter((e=>e[1]=="13")).length;
+    let enterKeys = gameState.replay.slice(10).filter((e,i)=>i%2).filter(e=>e==13).length+1;
+    console.log(enterKeys)
     let acc = gameState.guesses.length / enterKeys * 100;
     return acc.toFixed(1) + "%";
 }
@@ -784,34 +866,53 @@ function createReplayData(gameState) {
     let replay = gameState.replay;
     console.log(replay)
     let arrayBuffer = new ArrayBuffer(20+((replay.length-10)*5/2));
-    let data = new DataView(arrayBuffer);
-    data.setUint32(0,replay[0],true) // seed
-    data.setUint8(4,replay[1]) // isDaily
-    data.setUint8(5,replay[2]) // isHard
-    data.setUint8(6,replay[3]) // numWords
-    data.setFloat64(7,replay[4],true) // timestamp of first guess
-    // console.log(data.getFloat64(7,true))
-    data.setUint8(15,replay[5]) // first guess charcodes (next 5)
-    data.setUint8(16,replay[6])
-    data.setUint8(17,replay[7])
-    data.setUint8(18,replay[8])
-    data.setUint8(19,replay[9])
-    let x = 20;
+    let settingsData = new DataView(arrayBuffer,0,20);
+    let replayData = new DataView(arrayBuffer,20,arrayBuffer.byteLength-20);
+    settingsData.setUint32(0,replay[0],true)            // seed
+    settingsData.setUint8(4,replay[1])                  // isDaily
+    settingsData.setUint8(5,replay[2])                  // isHard
+    settingsData.setUint8(6,replay[3])                  // numWords
+    settingsData.setFloat64(7,replay[4],true)           // timestamp of first guess
+    settingsData.setUint8(15,replay[5])                 // first guess charcodes (next 5)
+    settingsData.setUint8(16,replay[6])
+    settingsData.setUint8(17,replay[7])
+    settingsData.setUint8(18,replay[8])
+    settingsData.setUint8(19,replay[9])
+    let x = 0;
     let y = 10;
     while (y < replay.length) {
-        data.setUint32(x,replay[y++],true) // timestamp of keypress
+        replayData.setUint32(x,replay[y++],true)      // timestamp of keypress
         x += 4;
-        data.setUint8(x++,replay[y++]) // keypress charcode
+        replayData.setUint8(x++,replay[y++])          // keypress charcode
     }
     console.log(new Uint8Array(arrayBuffer))
     return arrayBuffer;
 }
 
-async function parseReplayData(data) {
-    if (!data) return false;
-    let blob = new Blob([data],{type:"application/octet-stream"});
-    let buffer = await blob.arrayBuffer();
-    return Array.from(new Uint32Array(buffer))
+async function parseReplayData(buffer) {
+    if (!buffer) return false;
+    let settingsView = new DataView(buffer,0,20);
+    let replayView = new DataView(buffer,20,buffer.byteLength-20);
+    let returnArray = [];
+    returnArray.push(
+        settingsView.getUint32(0,true),         // seed
+        settingsView.getUint8(4),               // isDaily
+        settingsView.getUint8(5),               // isHard
+        settingsView.getUint8(6),               // numWords
+        settingsView.getFloat64(7,true),        // timestamp of first guess
+        settingsView.getUint8(15,true),         // first guess charcodes (next 5)
+        settingsView.getUint8(16,true),
+        settingsView.getUint8(17,true),
+        settingsView.getUint8(18,true),
+        settingsView.getUint8(19,true)
+    )
+    let x = 0;
+    while(x < replayView.byteLength) {
+        returnArray.push(replayView.getUint32(x,true))
+        x += 4;
+        returnArray.push(replayView.getUint8(x++))
+    }
+    return Array.from(returnArray)
 }
 
 init();

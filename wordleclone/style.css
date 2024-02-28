@@ -140,12 +140,13 @@ button:hover {
 .gamesContainer {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
 }
 .gameContainer {
     margin: 0 5px;
     width: 400px;
     height: 400px;
-    overflow-y: auto;
+    /* overflow-y: auto; */
     -webkit-mask: linear-gradient(#000, #000, #0000);
     mask: linear-gradient(#000, #000, #0000);
 }
