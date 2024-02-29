@@ -832,7 +832,8 @@ function shareClipboard(gameState) {
     let newClip = `Wordle Clone ${daily}${hard}
 ⏱️:${time}
 ❓:${gameState.guesses.length}
-🎯:${calculateAccuracy(gameState)}`;
+🎯:${calculateAccuracy(gameState)}
+https://firestix.github.io/wordleclone/`;
     navigator.permissions.query({name: "clipboard-write"}).then(result => {
         if (result.state == "granted" || result.state == "prompt") {
             navigator.clipboard.writeText(newClip).then(()=>{

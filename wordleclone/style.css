@@ -1,5 +1,7 @@
 *{
-    font-family:'Courier New', Courier, monospace;
+    font-family: "Sono", 'Courier New', Courier, monospace;
+    font-optical-sizing: auto;
+    font-variation-settings: "MONO" 1;
 }
 :root {
     --theme-background-base:white;
@@ -97,7 +99,8 @@ button:hover {
     text-align: left;
 }
 .keyboardConatiner {
-    position: absolute;
+    position: fixed;
+    bottom:0;
     background: var(--theme-background-keyboard);
     padding: 20px;
     border-radius: 20px 20px 0px 0px;
@@ -113,10 +116,13 @@ button:hover {
     justify-content: center;
 }
 .guessContainer {
-    display:flex;
+    display: flex;
     justify-content: center;
-    position:relative;
-    left:0px;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+    background: var(--theme-background-base);
 }
 .guessLetter {
     background-color: var(--theme-background-element);
@@ -128,7 +134,7 @@ button:hover {
     font-size: 128pt;
     line-height: 200px;
     text-align: center;
-    font-weight: bold;
+    font-weight: 500;
     position: relative;
     bottom: 0px;
     user-select: none;
@@ -141,6 +147,8 @@ button:hover {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
+    padding-top: 200px;
+    padding-bottom: 300px;
 }
 .gameContainer {
     margin: 0 5px;
@@ -203,6 +211,7 @@ button:hover {
     font-size: 30pt;
     margin: 13px;
     user-select: none;
+    font-weight: 600;
 }
 .smallHint, .keyButton {
     width: 25px;
@@ -212,7 +221,8 @@ button:hover {
     border-radius: 5px;
     font-size: 14pt;
     user-select: none;
-}
+    font-weight: 700;
+  }
 .keyButton{
     width: 37.5px;
     height: 37.5px;
