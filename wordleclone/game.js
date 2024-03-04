@@ -8,24 +8,37 @@ for (let q of queryData) {
 import "./quickElement.js";
 import { DialogBox } from "./dialogBox.js";
 
+
 let wordList, commonWordList, dialog;
 
-let completedDailies = {normal:false,expert:false};
+// let completedDailies = {normal:false,expert:false};
 
 async function init() {
     let wlr = await fetch("wordle.txt");
     let cwlr = await fetch("wordlecommon.txt");
     wordList = WordList.fromArray((await wlr.text()).split(/\r\n|\r|\n/g));
     commonWordList = WordList.fromArray((await cwlr.text()).split(/\r\n|\r|\n/g));
-    // let gameState = await parseReplayData(getCookie("gameState"));
-    // if (gameState) {
-    //     let div = document.getElementById("game");
-    //     div.innerHTML = "";
-    //     MultiWordGame.fromGameState(div,gameState);
-    // } else {
+    let gameState = window.localStorage.getItem("gameState");
+    if (gameState) {
+        let parsedData = JSON.parse(gameState);
+        // console.log(parsedData);
+        if (parsedData.expire > Date.now()) {
+            let buffer = await (await fetch(`data:application/octet-stream;base64,${parsedData.state}`)).arrayBuffer();
+            // console.log(buffer)
+            let div = document.getElementById("game");
+            div.innerHTML = "";
+            MultiWordGame.fromGameState(div,buffer);
+        } else {
+            localStorage.removeItem("gameState");
+            generateMainPage();
+        }
+        
+        
+    } else {
         generateMainPage();
-    // }
+    }
 }
+
 
 function generateMainPage() {
     let div = document.getElementById("game");
@@ -47,25 +60,31 @@ function generateMainPage() {
     div.createChildNode("h2","Daily");
     div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
         button.addEventListener("click",()=>{
-            if (!completedDailies["normal"]) {
+            let finishedGame = checkForFinishedGame("normal");
+            if (finishedGame) {
+                if (confirm("You've already completed today's normal game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
+                    fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
+                        downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
+                    })
+                }
+            } else {
                 div.innerHTML = "";
                 startGame(true);
-            } else {
-                if (confirm("You've already completed today's normal game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
-                    downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",completedDailies["normal"])
-                }
             }
         });
     })
     div.createChildNode("button",{class:"difficultyButton"},"Expert",(button)=>{
         button.addEventListener("click",()=>{
-            if (!completedDailies["expert"]) {
+            let finishedGame = checkForFinishedGame("expert");
+            if (finishedGame) {
+                if (confirm("You've already completed today's expert game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
+                    fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
+                        downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
+                    })
+                }
+            } else {
                 div.innerHTML = "";
                 startGame(true,true);
-            } else {
-                if (confirm("You've already completed today's expert game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
-                    downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",completedDailies["expert"])
-                }
             }
         });
     });
@@ -89,6 +108,18 @@ function generateMainPage() {
     div.createChildNode("button",{class:"smallButton"},"View Replay",(button)=>{
         button.addEventListener("click",replayDialog);
     });
+}
+
+function checkForFinishedGame(type) {
+    let savedGame = localStorage.getItem(type);
+    if (savedGame) {
+        savedGame = JSON.parse(savedGame);
+        if (savedGame.expire < Date.now()) {
+            localStorage.removeItem("normal");
+            savedGame = false;
+        }
+    }
+    return savedGame;
 }
 
 function customGameDialog() {
@@ -308,6 +339,7 @@ class MultiWordGame {
     isReplay;
     numWords;
     timerElement;
+    expire;
     constructor(elem,numWords,daily,seed,hardMode,custom,replaymode = false,startOnCreation = true) {
         this.numWords = numWords;
         this.isDaily = daily;
@@ -315,12 +347,17 @@ class MultiWordGame {
         this.isReplay = replaymode;
         this.isCustom = custom;
         this.gameSeed = seed;
+        this.replayReader = new FileReader();
+        this.replayReader.onloadend = (e)=>this.replayReaderHandler(e,"gameState");
         this.replay.push(Number(this.gameSeed));
         this.replay.push(this.isDaily ? 1 : 0);
         this.replay.push(this.isHard ? 1 : 0);
         this.replay.push(this.isCustom ? 1 : 0);
         this.replay.push(this.numWords);
         this.container = elem;
+        this.expire = new Date();
+        this.expire.setDate(this.expire.getDate()+1);
+        this.expire.setHours(0,0,0,0);
         if (startOnCreation) {
             this.start();
         }
@@ -355,8 +392,6 @@ class MultiWordGame {
                 this.gameStarted = true;
                 this.startTime = Date.now();
                 this.replay.push(this.startTime,...this.currentGuess.split("").map(c=>c.charCodeAt(0)))
-                // this.pushCharToReplay(,);
-                // this.setReplayCookie();
             }
             this.guesses.unshift(this.currentGuess);
             for (let g of this.games) {
@@ -366,26 +401,20 @@ class MultiWordGame {
             if (this.games.filter(g=>g.solved).length == this.games.length) {
                 this.finishTime = Date.now();
                 this.gameFinished = true;
-                // eatCookie("gameState");
+                localStorage.removeItem("gameState")
                 if (this.isDaily && !this.isReplay) {
-                    // console.log(this.isHard)
-                    // let enc = createReplayData(this);
-                    // let gameType = this.isHard ? "expert" : "normal";
-                    // completedDailies[gameType] = enc;
-                    // let exp = new Date(this.startTime);
-                    // exp.setDate(exp.getDate() + 1);
-                    // exp.setHours(0, 0, 0, 0);
-                    // setCookie(gameType, enc, exp);
+                    let dailyReader = new FileReader();
+                    dailyReader.readAsDataURL(new Blob([createReplayData(this)],{type:"application/octet-stream"}));
+                    dailyReader.onloadend = (e)=>this.replayReaderHandler(e,this.isHard ? "expert" : "normal");
                 }
                 endGameDialog(this);
-                //console.log(btoa());
             }
             this.currentGuess = "";
             this.buildGuessContainerElements();
         } else {
             this.guessContainer.classList.add("inpErr");
-            
         }
+        if (!this.gameFinished) this.replayReader.readAsDataURL(new Blob([createReplayData(this)],{type:"application/octet-stream"}));
         this.buildUnusedLettersElements();
     }
     keyHandler(e) {
@@ -399,11 +428,14 @@ class MultiWordGame {
             this.modifyGuess(e.keyCode);
         }
     }
-    setReplayCookie() {
-        let exp = new Date(this.startTime);
-        exp.setDate(exp.getDate() + 1);
-        exp.setHours(0, 0, 0, 0);
-        setCookie("gameState", createReplayData(this), exp);
+    replayReaderHandler(e,key) {
+        // console.log(e.target.result)
+        let gameStateObj = {
+            expire: this.expire.getTime(),
+            state: e.target.result.replace(/^data:application\/octet-stream;base64,/,"")
+        }
+        localStorage.setItem(key,JSON.stringify(gameStateObj))
+        // console.log(new Blob(Object.values(localStorage)).size)
     }
     modifyGuess(code) {
         switch(code) {
@@ -450,7 +482,7 @@ class MultiWordGame {
             div.createChildNode("div",{class:"keyboardHeader"},(div)=>{
                 div.createChildNode("div",(this.isDaily ? "Daily" : this.isCustom ? "Custom" : "Random") + " (" + (this.isHard ? "Expert" : "Normal") + ")")
                 div.createChildNode("div",(div)=>{
-                    div.appendChild(this.timerElement)
+                    div.appendChild(this.timerElement);
                 });
             });
             for (let row of rows) {
@@ -502,44 +534,49 @@ class MultiWordGame {
         this.buildGuessContainerElements();
         this.startTimer();
     }
-    // static fromGameState(elem,gameState) {
-    //     let genData = gameState[0].split(" ");
-    //     let game = new MultiWordGame(elem,Number(genData[3]),Number(genData[1]) == 1,genData[0],Number(genData[2]) == 1,false,false);
-    //     game.replay = gameState;
-    //     game.startTime = Number(gameState[1].split(" ")[0]);
-    //     let guesses = [];
-    //     let currentGuess = "";
-    //     for (let x = 1, xlen = gameState.length; x < xlen; x++) {
-    //         let code =  Number(gameState[x].split(" ")[1]);
-    //         switch(code) {
-    //             case 13:
-    //                 if (currentGuess.length == 5 && !guesses.includes(currentGuess) && wordList.includes(currentGuess)) {
-    //                     guesses.unshift(currentGuess)
-    //                     currentGuess = "";
-    //                 }
-    //                 break;
-    //             case 8:
-    //             case 46:
-    //                 if (currentGuess.length > 0) currentGuess = currentGuess.substring(0,currentGuess.length-1);
-    //                 break;
-    //             default:
-    //                 if (code > 64 && code < 91) {
-    //                     if (currentGuess.length < 5) {
-    //                         currentGuess += String.fromCharCode(code);
-    //                     }
-    //                 }
-    //         }
-    //     }
-    //     game.guesses = guesses;
-    //     game.currentGuess = currentGuess;
-    //     game.gameStarted = true;
-    //     game.start();
-    // }
+    static async fromGameState(elem,gameState) {
+        let data = await parseReplayData(gameState);
+        // console.log(data);
+        let settings = data.splice(0,11);
+        let game = new MultiWordGame(elem,settings[4],!!settings[1],settings[0],!!settings[2],!!settings[3],false,false);
+        // let game = new MultiWordGame(elem,Number(genData[3]),Number(genData[1]) == 1,genData[0],Number(genData[2]) == 1,false,false);
+        game.replay = [...settings,...data];
+        game.startTime = settings[5];
+        let lettersTyped = [...settings.slice(6),13,...data.filter((e,i)=>i%2)];
+        // console.log(lettersTyped)
+        let guesses = [];
+        let currentGuess = "";
+        for (let x = 0, xlen = lettersTyped.length; x < xlen; x++) {
+            let code = lettersTyped[x];
+            switch(code) {
+                case 13:
+                    if (currentGuess.length == 5 && !guesses.includes(currentGuess) && wordList.includes(currentGuess)) {
+                        guesses.unshift(currentGuess)
+                        currentGuess = "";
+                    }
+                    break;
+                case 8:
+                case 46:
+                    if (currentGuess.length > 0) currentGuess = currentGuess.substring(0,currentGuess.length-1);
+                    break;
+                default:
+                    if (code > 64 && code < 91) {
+                        if (currentGuess.length < 5) {
+                            currentGuess += String.fromCharCode(code);
+                        }
+                    }
+            }
+        }
+        game.guesses = guesses;
+        game.currentGuess = currentGuess;
+        game.gameStarted = true;
+        game.start();
+    }
     static async fromReplay(elem,replay) {
         let data = await parseReplayData(replay);
         let settings = data.splice(0,11);
-        console.log(settings)
-        let game = new MultiWordGame(elem,settings[3],!!settings[1],settings[0],!!settings[2],!!settings[4],true);
+        // console.log(settings)
+        let game = new MultiWordGame(elem,settings[4],!!settings[1],settings[0],!!settings[2],!!settings[3],true);
         window.setTimeout(()=>{
             game.keyHandler({keyCode:settings[6]})
         },150)
