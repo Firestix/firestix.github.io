@@ -3,6 +3,7 @@
     font-optical-sizing: auto;
     font-variation-settings: "MONO" 1;
     scrollbar-width: thin;
+    scrollbar-color: var(--theme-background-element) transparent;
 }
 :root {
     --theme-background-base:white;
@@ -167,6 +168,8 @@ button:hover {
 }
 .gameGuessContainer {
     height: 80px;
+    display: flex;
+    justify-content: space-between;
 }
 .gameContainer .guessLetter, .exampleGame .guessLetter {
     width: 75px;
@@ -218,7 +221,7 @@ button:hover {
 }
 .hintContainer {
     display: inline-flex;
-    width: 75px;
+    width: 74.5px;
     flex-wrap: wrap;
     margin: 2px;
     align-items: center;
@@ -239,7 +242,7 @@ button:hover {
     font-weight: 600;
 }
 .smallHint, .keyButton {
-    width: 25px;
+    width: 24px;
     height: 25px;
     text-align: center;
     line-height: 25px;
@@ -247,7 +250,7 @@ button:hover {
     font-size: 14pt;
     user-select: none;
     font-weight: 700;
-  }
+}
 .keyButton{
     width: 37.5px;
     height: 37.5px;
