@@ -2,6 +2,7 @@
     font-family: "Sono", 'Courier New', Courier, monospace;
     font-optical-sizing: auto;
     font-variation-settings: "MONO" 1;
+    scrollbar-width: thin;
 }
 :root {
     --theme-background-base:white;
@@ -19,6 +20,7 @@ body {
     overflow-x: hidden;
     background: var(--theme-background-base);
     color:var(--theme-color-base);
+    margin:0;
 }
 button {
     background-color: var(--theme-background-element);
@@ -63,6 +65,10 @@ button:hover {
     flex-grow: 2;
     overflow-y:auto;
 }
+.mainMenuContainer {
+    margin: 10px;
+    text-align: center;
+}
 .statusContainer {
     display: flex;
     flex-flow: column;
@@ -102,8 +108,8 @@ button:hover {
     position: fixed;
     bottom:0;
     background: var(--theme-background-keyboard);
-    padding: 20px;
-    border-radius: 20px 20px 0px 0px;
+    padding: 15px 7px;
+    border-radius: 10px 10px 0px 0px;
     bottom: 0;
     z-index: 1;
 }
@@ -123,6 +129,7 @@ button:hover {
     width: 100%;
     z-index: 100;
     background: var(--theme-background-base);
+    padding: 2px 0;
 }
 .guessLetter {
     background-color: var(--theme-background-element);
@@ -130,7 +137,7 @@ button:hover {
     width: 100px;
     height: 100px;
     border-radius: 10px;
-    margin: 3px;
+    margin: 1px;
     font-size: 64pt;
     line-height: 100px;
     text-align: center;
@@ -153,10 +160,10 @@ button:hover {
 .gameContainer {
     margin: 0 5px;
     width: 400px;
-    height: 400px;
+    /* height: 400px; */
     /* overflow-y: auto; */
-    -webkit-mask: linear-gradient(#000, #000, #0000);
-    mask: linear-gradient(#000, #000, #0000);
+    /* -webkit-mask: linear-gradient(#000, #000, #0000);
+    mask: linear-gradient(#000, #000, #0000); */
 }
 .gameGuessContainer {
     height: 80px;
@@ -168,6 +175,22 @@ button:hover {
     margin: 2px;
     font-size: 48pt;
     line-height: 75px;
+}
+.guessesContainer {
+    height: 200px;
+    overflow-y: auto;
+    padding-bottom: 120px;
+    box-sizing: border-box;
+    -webkit-mask: linear-gradient(#000, #000, #0000);
+    mask: linear-gradient(#000, #000, #0000);
+    transition: height 0.5s, padding-bottom 0.5s;
+}
+.gameContainer.solved .guessesContainer {
+    height: 80px;
+    -webkit-mask: none;
+    mask: none;
+    overflow-y: hidden;
+    padding-bottom: 0;
 }
 .unused, .used {
     background-color: var(--theme-background-element);
@@ -188,7 +211,10 @@ button:hover {
 }
 .hintsContainer {
     display: flex;
-    min-height: 80px;
+    min-height: 54px;
+    background: var(--theme-background-keyboard);
+    border-radius: 20px;
+    margin: 2px 0;
 }
 .hintContainer {
     display: inline-flex;
@@ -209,7 +235,6 @@ button:hover {
     line-height: 50px;
     border-radius: 5px;
     font-size: 30pt;
-    margin: 13px;
     user-select: none;
     font-weight: 600;
 }
@@ -236,7 +261,7 @@ button:hover {
     cursor: pointer;
 }
 .wideKey {
-    width: 75px;
+    width: 60px;
 }
 .timer::before {
     content: "⏱️";

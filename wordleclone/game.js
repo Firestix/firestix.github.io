@@ -43,71 +43,73 @@ async function init() {
 function generateMainPage() {
     let div = document.getElementById("game");
     div.innerHTML = "";
-    div.createChildNode("h1",(div)=>{
-        div.createChildNode("span","Wordle Clone");
-        div.createChildNode("span",{style:"font-size:10pt"},` v${queryVars["v"]}`);
-    });
-    div.createChildNode("div",(div)=>{
-        div.createChildNode("span","Based on ")
-        div.createChildNode("a",{href:"https://www.nytimes.com/games/wordle/",target:"_blank"},"Wordle");
-        div.createChildNode("span"," hosted by ");
-        div.createChildNode("a",{href:"https://twitter.com/NYTGames",target:"_blank"},"@NYTGames.");
-    });
-    div.createChildNode("br")
-    div.createChildNode("button",{class:"smallButton"},"How To Play",(button)=>{
-        button.addEventListener("click",howToPlayDialog);
-    });
-    div.createChildNode("h2","Daily");
-    div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
-        button.addEventListener("click",()=>{
-            let finishedGame = checkForFinishedGame("normal");
-            if (finishedGame) {
-                if (confirm("You've already completed today's normal game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
-                    fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
-                        downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
-                    })
+    div.createChildNode("div",{class:"mainMenuContainer"},(div)=>{
+        div.createChildNode("h1",(div)=>{
+            div.createChildNode("span","Wordle Clone");
+            div.createChildNode("span",{style:"font-size:10pt"},` v${queryVars["v"]}`);
+        });
+        div.createChildNode("div",(div)=>{
+            div.createChildNode("span","Based on ")
+            div.createChildNode("a",{href:"https://www.nytimes.com/games/wordle/",target:"_blank"},"Wordle");
+            div.createChildNode("span"," hosted by ");
+            div.createChildNode("a",{href:"https://twitter.com/NYTGames",target:"_blank"},"@NYTGames.");
+        });
+        div.createChildNode("br")
+        div.createChildNode("button",{class:"smallButton"},"How To Play",(button)=>{
+            button.addEventListener("click",howToPlayDialog);
+        });
+        div.createChildNode("h2","Daily");
+        div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
+            button.addEventListener("click",()=>{
+                let finishedGame = checkForFinishedGame("normal");
+                if (finishedGame) {
+                    if (confirm("You've already completed today's normal game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
+                        fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
+                            downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
+                        })
+                    }
+                } else {
+                    div.innerHTML = "";
+                    startGame(true);
                 }
-            } else {
-                div.innerHTML = "";
-                startGame(true);
-            }
-        });
-    })
-    div.createChildNode("button",{class:"difficultyButton"},"Expert",(button)=>{
-        button.addEventListener("click",()=>{
-            let finishedGame = checkForFinishedGame("expert");
-            if (finishedGame) {
-                if (confirm("You've already completed today's expert game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
-                    fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
-                        downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
-                    })
+            });
+        })
+        div.createChildNode("button",{class:"difficultyButton"},"Expert",(button)=>{
+            button.addEventListener("click",()=>{
+                let finishedGame = checkForFinishedGame("expert");
+                if (finishedGame) {
+                    if (confirm("You've already completed today's expert game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
+                        fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
+                            downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
+                        })
+                    }
+                } else {
+                    div.innerHTML = "";
+                    startGame(true,true);
                 }
-            } else {
+            });
+        });
+        div.createChildNode("h2","Random");
+        div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
+            button.addEventListener("click",()=>{
                 div.innerHTML = "";
-                startGame(true,true);
-            }
+                startGame(false);
+            });
+        })
+        div.createChildNode("button",{class:"difficultyButton"},"Expert",(button)=>{
+            button.addEventListener("click",()=>{
+                div.innerHTML = "";
+                startGame(false,true);
+            });
         });
-    });
-    div.createChildNode("h2","Random");
-    div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
-        button.addEventListener("click",()=>{
-            div.innerHTML = "";
-            startGame(false);
+        div.createChildNode("br");
+        div.createChildNode("button",{class:"smallButton"},"Custom Game",(button)=>{
+            button.addEventListener("click",customGameDialog);
+        })
+        div.createChildNode("button",{class:"smallButton"},"View Replay",(button)=>{
+            button.addEventListener("click",replayDialog);
         });
     })
-    div.createChildNode("button",{class:"difficultyButton"},"Expert",(button)=>{
-        button.addEventListener("click",()=>{
-            div.innerHTML = "";
-            startGame(false,true);
-        });
-    });
-    div.createChildNode("br");
-    div.createChildNode("button",{class:"smallButton"},"Custom Game",(button)=>{
-        button.addEventListener("click",customGameDialog);
-    })
-    div.createChildNode("button",{class:"smallButton"},"View Replay",(button)=>{
-        button.addEventListener("click",replayDialog);
-    });
 }
 
 function checkForFinishedGame(type) {
@@ -282,9 +284,13 @@ function replayDialog() {
 function startGame(daily,hardMode=false,custom=false,seed = false,num = false) {
     let gameSeed;
     let numWords = num;
+    if (custom && !isNaN(seed)) {
+        let numSeed = Number(seed);
+        if (numSeed >= 0 && numSeed < 4294967295) gameSeed = numSeed;
+    }
     let rngSeed = seed ? seed.toString() : daily ? generateDailySeed(hardMode) : Math.floor(Math.random()*Number.MAX_SAFE_INTEGER).toString();
     let rng = new Math.seedrandom(rngSeed);
-    gameSeed = Math.floor(rng()*4294967295);
+    gameSeed = gameSeed || Math.floor(rng()*4294967295);
     numWords = numWords || Math.floor(numWordsTransformFunc(rng()/(hardMode?1:2)));
     return new MultiWordGame(document.getElementById("game"),numWords,daily,gameSeed,hardMode,custom);
 }
@@ -414,7 +420,7 @@ class MultiWordGame {
         } else {
             this.guessContainer.classList.add("inpErr");
         }
-        if (!this.gameFinished) this.replayReader.readAsDataURL(new Blob([createReplayData(this)],{type:"application/octet-stream"}));
+        if (!this.gameFinished && !this.isReplay) this.replayReader.readAsDataURL(new Blob([createReplayData(this)],{type:"application/octet-stream"}));
         this.buildUnusedLettersElements();
     }
     keyHandler(e) {
@@ -477,7 +483,7 @@ class MultiWordGame {
             let rows = [
                 [{Q:81},{W:87},{E:69},{R:82},{T:84},{Y:89},{U:85},{I:73},{O:79},{P:80}],
                 [{A:65},{S:83},{D:68},{F:70},{G:71},{H:72},{J:74},{K:75},{L:76}],
-                [{"⌫":46},{Z:90},{X:88},{C:67},{V:86},{B:66},{N:78},{M:77},{"↩":13}]
+                [{"↩":13},{Z:90},{X:88},{C:67},{V:86},{B:66},{N:78},{M:77},{"⌫":46}]
             ];
             div.createChildNode("div",{class:"keyboardHeader"},(div)=>{
                 div.createChildNode("div",(this.isDaily ? "Daily" : this.isCustom ? "Custom" : "Random") + " (" + (this.isHard ? "Expert" : "Normal") + ")")
@@ -646,12 +652,14 @@ class WordGame {
         if (this.solved) {
             this.element.classList.add("solved");
         }
-        this.element.insertBefore(guessdata.buildElement(), this.element.children[2]);
+        this.guessesElement.insertBefore(guessdata.buildElement(), this.guessesElement.children[0]);
+        this.guessesElement.scrollTo(0,0);
         return guessdata;
     }
     buildElements() {
-        this.element.createChildNode("div",{class:"wordGameIndex"},this.index.toString());
+        this.element.createChildNode("div",{class:"wordGameIndex"},(this.index+1).toString());
         this.hintsElement = this.element.createChildNode("div",{class:"hintsElement"});
+        this.guessesElement = this.element.createChildNode("div",{class:"guessesContainer"});
     }
     buildHintTracker() {
         this.hintsElement.innerHTML = "";
@@ -818,12 +826,13 @@ function calculateAccuracy(gameState) {
 function shareClipboard(gameState) {
     let startDate = new Date(gameState.startTime);
     let time = formatTime(gameState.finishTime - gameState.startTime);
-    let daily = gameState.isDaily ? "📆:" + startDate.getFullYear() + "-" + (startDate.getMonth()+1) + "-" + startDate.getDate() : gameState.isCustom ? "🔧:" + gameState.gameSeed : "🎲:" + gameState.gameSeed;
+    let daily = gameState.isDaily ? "📆:" + startDate.getFullYear() + "-" + (startDate.getMonth()+1) + "-" + startDate.getDate() :(gameState.isCustom ? "🔧" : "🎲");
     let hard = gameState.isHard ? " (expert)" : " (normal)";
+    let seeds = gameState.isDaily ? "" : `\n🌱:${gameState.gameSeed} (x${gameState.numWords})`;
     let newClip = `Wordle Clone ${daily}${hard}
 ⏱️:${time}
 ❓:${gameState.guesses.length}
-🎯:${calculateAccuracy(gameState)}
+🎯:${calculateAccuracy(gameState)}${seeds}
 https://firestix.github.io/wordleclone/`;
     navigator.permissions.query({name: "clipboard-write"}).then(result => {
         if (result.state == "granted" || result.state == "prompt") {
@@ -882,7 +891,9 @@ function createReplayData(gameState) {
 
 async function parseReplayData(buffer) {
     if (!buffer) return false;
-    let settingsView = new DataView(buffer,1,20);
+    // console.log(buffer)
+    let settingsView = new DataView(buffer,1,19);
+    // console.log(new Uint8Array(settingsView.buffer))
     let replayView = new DataView(buffer,20,buffer.byteLength-20);
     // console.log(replayView.byteLength)
     let returnArray = [];
@@ -904,6 +915,7 @@ async function parseReplayData(buffer) {
         x += 4;
         returnArray.push(replayView.getUint8(x++))
     }
+    // console.log(returnArray)
     return Array.from(returnArray)
 }
 
