@@ -59,34 +59,20 @@ function generateMainPage() {
             button.addEventListener("click",howToPlayDialog);
         });
         div.createChildNode("h2","Daily");
+        div.createChildNode("button",{class:"difficultyButton"},"Easy",(button)=>{
+            button.addEventListener("click",()=>{
+                setDailyDifficulty(div,"easy");
+            });
+        })
+        div.createChildNode("br");
         div.createChildNode("button",{class:"difficultyButton"},"Normal",(button)=>{
             button.addEventListener("click",()=>{
-                let finishedGame = checkForFinishedGame("normal");
-                if (finishedGame) {
-                    if (confirm("You've already completed today's normal game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
-                        fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
-                            downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
-                        })
-                    }
-                } else {
-                    div.innerHTML = "";
-                    startGame(true);
-                }
+                setDailyDifficulty(div,"normal");
             });
         })
         div.createChildNode("button",{class:"difficultyButton"},"Expert",(button)=>{
             button.addEventListener("click",()=>{
-                let finishedGame = checkForFinishedGame("expert");
-                if (finishedGame) {
-                    if (confirm("You've already completed today's expert game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?")){
-                        fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
-                            downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
-                        })
-                    }
-                } else {
-                    div.innerHTML = "";
-                    startGame(true,true);
-                }
+                setDailyDifficulty(div,"expert");
             });
         });
         div.createChildNode("h2","Random");
@@ -110,6 +96,20 @@ function generateMainPage() {
             button.addEventListener("click",replayDialog);
         });
     })
+}
+
+function setDailyDifficulty(div,difficulty) {
+    let finishedGame = checkForFinishedGame(difficulty);
+    if (finishedGame) {
+        if (confirm(`You've already completed today's ${difficulty} game. Come back tomorrow for a new game.\r\n\r\nWould you like to download the replay file for this game?`)){
+            fetch(`data:application/octet-stream;base64,${finishedGame.state}`).then(res=>res.arrayBuffer()).then(data=>{
+                downloadFile("game_" + (new Date().toISOString()).replaceAll(/:/g,"_") + ".replay",data);
+            })
+        }
+    } else {
+        div.innerHTML = "";
+        startGame(true,difficulty=="expert",false,false,difficulty=="easy" ? 1 : false);
+    }
 }
 
 function checkForFinishedGame(type) {
@@ -288,20 +288,28 @@ function startGame(daily,hardMode=false,custom=false,seed = false,num = false) {
         let numSeed = Number(seed);
         if (numSeed >= 0 && numSeed < 4294967295) gameSeed = numSeed;
     }
-    let rngSeed = seed ? seed.toString() : daily ? generateDailySeed(hardMode) : Math.floor(Math.random()*Number.MAX_SAFE_INTEGER).toString();
+    let rngSeed = seed ? seed.toString() : daily ? generateDailySeed(hardMode,!hardMode&&num==1) : Math.floor(Math.random()*Number.MAX_SAFE_INTEGER).toString();
     let rng = new Math.seedrandom(rngSeed);
     gameSeed = gameSeed || Math.floor(rng()*4294967295);
     numWords = numWords || Math.floor(numWordsTransformFunc(rng()/(hardMode?1:2)));
-    return new MultiWordGame(document.getElementById("game"),numWords,daily,gameSeed,hardMode,custom);
+    return new MultiWordGame(document.getElementById("game"),{
+        numWords:numWords,
+        dailyMode:daily,
+        gameSeed:gameSeed,
+        hardMode:hardMode,
+        customMode:custom,
+        easyMode:numWords==1&&!hardMode,
+        startOnCreation:true
+    });
 }
 
 function numWordsTransformFunc(x) {
     return Math.tan(x*2.5-1.15)+4.5
 }
 
-function generateDailySeed(hardMode) {
+function generateDailySeed(hardMode,easyMode) {
     let today = new Date();
-    return (hardMode ? "1" : "") + today.getFullYear().toString() + (today.getMonth()+1).toString().padStart(2,"0") + today.getDate().toString().padStart(2,"0");
+    return (hardMode ? "1" : easyMode ? "2" : "") + today.getFullYear().toString() + (today.getMonth()+1).toString().padStart(2,"0") + today.getDate().toString().padStart(2,"0");
 }
 
 class WordList extends Array{
@@ -341,30 +349,42 @@ class MultiWordGame {
     gameSeed;
     isDaily;
     isHard;
+    isEasy;
     replay = [];
     isReplay;
     numWords;
     timerElement;
     expire;
-    constructor(elem,numWords,daily,seed,hardMode,custom,replaymode = false,startOnCreation = true) {
-        this.numWords = numWords;
-        this.isDaily = daily;
-        this.isHard = hardMode;
-        this.isReplay = replaymode;
-        this.isCustom = custom;
-        this.gameSeed = seed;
+    constructor(elem,settings) {
+        let gameSettings = {
+            dailyMode:false,
+            hardMode:false,
+            easyMode:false,
+            customMode:false,
+            replayMode:false,
+            startOnCreation:false,
+            ...settings
+        }
+        this.numWords = gameSettings.numWords;
+        this.isDaily = gameSettings.dailyMode;
+        this.isHard = gameSettings.hardMode;
+        this.isEasy = gameSettings.easyMode;
+        this.isReplay = gameSettings.replayMode;
+        this.isCustom = gameSettings.customMode;
+        this.gameSeed = gameSettings.gameSeed;
         this.replayReader = new FileReader();
         this.replayReader.onloadend = (e)=>this.replayReaderHandler(e,"gameState");
         this.replay.push(Number(this.gameSeed));
         this.replay.push(this.isDaily ? 1 : 0);
         this.replay.push(this.isHard ? 1 : 0);
         this.replay.push(this.isCustom ? 1 : 0);
+        this.replay.push(this.isEasy ? 1 : 0);
         this.replay.push(this.numWords);
         this.container = elem;
         this.expire = new Date();
         this.expire.setDate(this.expire.getDate()+1);
         this.expire.setHours(0,0,0,0);
-        if (startOnCreation) {
+        if (gameSettings.startOnCreation) {
             this.start();
         }
     }
@@ -411,7 +431,7 @@ class MultiWordGame {
                 if (this.isDaily && !this.isReplay) {
                     let dailyReader = new FileReader();
                     dailyReader.readAsDataURL(new Blob([createReplayData(this)],{type:"application/octet-stream"}));
-                    dailyReader.onloadend = (e)=>this.replayReaderHandler(e,this.isHard ? "expert" : "normal");
+                    dailyReader.onloadend = (e)=>this.replayReaderHandler(e,this.isHard ? "expert" : this.isEasy ? "easy" : "normal");
                 }
                 endGameDialog(this);
             }
@@ -486,7 +506,7 @@ class MultiWordGame {
                 [{"↩":13},{Z:90},{X:88},{C:67},{V:86},{B:66},{N:78},{M:77},{"⌫":46}]
             ];
             div.createChildNode("div",{class:"keyboardHeader"},(div)=>{
-                div.createChildNode("div",(this.isDaily ? "Daily" : this.isCustom ? "Custom" : "Random") + " (" + (this.isHard ? "Expert" : "Normal") + ")")
+                div.createChildNode("div",(this.isDaily ? "Daily" : this.isCustom ? "Custom" : "Random") + " (" + (this.isHard ? "Expert" : this.isEasy ? "Easy" : "Normal") + ")")
                 div.createChildNode("div",(div)=>{
                     div.appendChild(this.timerElement);
                 });
@@ -515,7 +535,7 @@ class MultiWordGame {
         });
     }
     buildTimerElement(){
-        this.timerElement = document.quickElement("div",{class:"timer"},"00:00:00.00");
+        this.timerElement = document.quickElement("div",{class:"timer"},"00.00");
     }
     startTimer(){
         window.requestAnimationFrame(()=>{this.updateTimer()});
@@ -524,7 +544,7 @@ class MultiWordGame {
         if (this.gameStarted) {
             this.timerElement.innerHTML = formatTime(Date.now() - this.startTime);
         } else {
-            this.timerElement.innerHTML = "00:00:00.00";
+            this.timerElement.innerHTML = "00.00";
         }
         if (this.gameFinished) {
             this.timerElement.innerHTML = formatTime(this.finishTime - this.startTime);
@@ -543,12 +563,20 @@ class MultiWordGame {
     static async fromGameState(elem,gameState) {
         let data = await parseReplayData(gameState);
         // console.log(data);
-        let settings = data.splice(0,11);
-        let game = new MultiWordGame(elem,settings[4],!!settings[1],settings[0],!!settings[2],!!settings[3],false,false);
+        let settings = data.splice(0,12);
+        let gameSettings = {
+            gameSeed:settings[0],
+            dailyMode:!!settings[1],
+            hardMode:!!settings[2],
+            customMode:!!settings[3],
+            numWords:settings[4],
+            easyMode:settings[5],
+        }
+        let game = new MultiWordGame(elem,gameSettings);
         // let game = new MultiWordGame(elem,Number(genData[3]),Number(genData[1]) == 1,genData[0],Number(genData[2]) == 1,false,false);
         game.replay = [...settings,...data];
-        game.startTime = settings[5];
-        let lettersTyped = [...settings.slice(6),13,...data.filter((e,i)=>i%2)];
+        game.startTime = settings[6];
+        let lettersTyped = [...settings.slice(7),13,...data.filter((e,i)=>i%2)];
         // console.log(lettersTyped)
         let guesses = [];
         let currentGuess = "";
@@ -580,23 +608,34 @@ class MultiWordGame {
     }
     static async fromReplay(elem,replay) {
         let data = await parseReplayData(replay);
-        let settings = data.splice(0,11);
+        let settings = data.splice(0,12);
         // console.log(settings)
-        let game = new MultiWordGame(elem,settings[4],!!settings[1],settings[0],!!settings[2],!!settings[3],true);
-        window.setTimeout(()=>{
-            game.keyHandler({keyCode:settings[6]})
-        },150)
+        let gameSettings = {
+            gameSeed:settings[0],
+            dailyMode:!!settings[1],
+            hardMode:!!settings[2],
+            customMode:!!settings[3],
+            numWords:settings[4],
+            easyMode:!!settings[5],
+            replayMode:true,
+            startOnCreation:true
+        }
+        console.log(gameSettings)
+        let game = new MultiWordGame(elem,gameSettings);
         window.setTimeout(()=>{
             game.keyHandler({keyCode:settings[7]})
-        },300)
+        },150)
         window.setTimeout(()=>{
             game.keyHandler({keyCode:settings[8]})
-        },450)
+        },300)
         window.setTimeout(()=>{
             game.keyHandler({keyCode:settings[9]})
-        },600)
+        },450)
         window.setTimeout(()=>{
             game.keyHandler({keyCode:settings[10]})
+        },600)
+        window.setTimeout(()=>{
+            game.keyHandler({keyCode:settings[11]})
         },750)
         window.setTimeout(()=>{
             game.keyHandler({keyCode:13})
@@ -814,11 +853,12 @@ function formatTime(mills,useMills = true) {
     let minutes = Math.floor(mills/1000/60) - (hours*60)
     let seconds = Math.floor(mills/1000) - (minutes*60);
     let millis = mills.toString().slice(-3).slice(0,2);
-    return hours.toString().padStart(2,"0") + ":" + minutes.toString().padStart(2,"0") + ":" + seconds.toString().padStart(2,"0") + (useMills ? "." + millis : "");
+    let str = `${mills >= (1000*60*60) ? hours.toString().padStart(2,"0") + ":" : ""}${mills >= (1000*60) ? minutes.toString().padStart(2,"0") + ":" : ""}${seconds.toString().padStart(2,"0")}${useMills ? "." + millis : ""}`
+    return str;
 }
 
 function calculateAccuracy(gameState) {
-    let enterKeys = gameState.replay.slice(11).filter((e,i)=>i%2).filter(e=>e==13).length+1;
+    let enterKeys = gameState.replay.slice(12).filter((e,i)=>i%2).filter(e=>e==13).length+1;
     let acc = gameState.guesses.length / enterKeys * 100;
     return acc.toFixed(1) + "%";
 }
@@ -827,7 +867,7 @@ function shareClipboard(gameState) {
     let startDate = new Date(gameState.startTime);
     let time = formatTime(gameState.finishTime - gameState.startTime);
     let daily = gameState.isDaily ? "📆:" + startDate.getFullYear() + "-" + (startDate.getMonth()+1) + "-" + startDate.getDate() :(gameState.isCustom ? "🔧" : "🎲");
-    let hard = gameState.isHard ? " (expert)" : " (normal)";
+    let hard = ` (${gameState.isHard ? "expert" : gameState.isEasy ? "easy" : "normal"})`;
     let seeds = gameState.isDaily ? "" : `\n🌱:${gameState.gameSeed} (x${gameState.numWords})`;
     let newClip = `Wordle Clone ${daily}${hard}
 ⏱️:${time}
@@ -864,28 +904,32 @@ function downloadFile(filename,data) {
 
 function createReplayData(gameState) {
     let replay = gameState.replay;
-    // console.log(replay)
-    let arrayBuffer = new ArrayBuffer(20+((replay.length-11)*5/2));
+    console.log(replay)
+    console.log(replay.length)
+    let arrayBuffer = new ArrayBuffer(20+((replay.length-12)*5/2));
     let settingsData = new DataView(arrayBuffer,0,20);
     let replayData = new DataView(arrayBuffer,20,arrayBuffer.byteLength-20);
+    console.log(replayData.byteLength)
     settingsData.setUint8(0,1)                                          // replay file version
     settingsData.setUint32(1,replay[0],true)                            // seed
-    settingsData.setUint8(5,encodeBinaryValue([replay[1],replay[2],replay[3]]))   // isDaily, isHard, isCustom
-    settingsData.setUint8(6,replay[4])                                  // numWords
-    settingsData.setFloat64(7,replay[5],true)                           // timestamp of first guess
-    settingsData.setUint8(15,replay[6])                                 // first guess charcodes (next 5)
-    settingsData.setUint8(16,replay[7])
-    settingsData.setUint8(17,replay[8])
-    settingsData.setUint8(18,replay[9])
-    settingsData.setUint8(19,replay[10])
+    settingsData.setUint8(5,encodeBinaryValue([replay[1],replay[2],replay[3],replay[4]]))   // isDaily, isHard, isCustom, isEasy
+    settingsData.setUint8(6,replay[5])                                  // numWords
+    settingsData.setFloat64(7,replay[6],true)                           // timestamp of first guess
+    settingsData.setUint8(15,replay[7])                                 // first guess charcodes (next 5)
+    settingsData.setUint8(16,replay[8])
+    settingsData.setUint8(17,replay[9])
+    settingsData.setUint8(18,replay[10])
+    settingsData.setUint8(19,replay[11])
     let x = 0;
-    let y = 11;
-    while (y < replay.length) {
-        replayData.setUint32(x,replay[y++],true)      // timestamp of keypress
-        x += 4;
-        replayData.setUint8(x++,replay[y++])          // keypress charcode
+    let y = 12;
+    if (replayData.byteLength > 0) {
+        while (y-12 < replay.length-12) {
+            replayData.setUint32(x,replay[y++],true)      // timestamp of keypress
+            x += 4;
+            replayData.setUint8(x++,replay[y++])          // keypress charcode
+        }
     }
-    // console.log(new Uint8Array(arrayBuffer))
+    console.log(new Uint8Array(arrayBuffer))
     return arrayBuffer;
 }
 
@@ -899,7 +943,7 @@ async function parseReplayData(buffer) {
     let returnArray = [];
     returnArray.push(
         settingsView.getUint32(0,true),                     // seed
-        ...parseBinaryValue(settingsView.getUint8(4),3),    // isDaily, isHard, isCustom
+        ...parseBinaryValue(settingsView.getUint8(4),4),    // isDaily, isHard, isCustom, isEasy
         settingsView.getUint8(5),                           // numWords
         settingsView.getFloat64(6,true),                    // timestamp of first guess
         settingsView.getUint8(14,true),                     // first guess charcodes (next 5)
