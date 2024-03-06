@@ -1,7 +1,3 @@
-[submodule "blitzdle"]
-path = blitzdle
-url = https://github.com/Firestix/Blitzdle.git
-branch = main
 [submodule "Blitzdle"]
 	path = Blitzdle
 	url = https://github.com/Firestix/Blitzdle.git
