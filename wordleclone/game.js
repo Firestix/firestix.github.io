@@ -620,7 +620,7 @@ class MultiWordGame {
             replayMode:true,
             startOnCreation:true
         }
-        console.log(gameSettings)
+        // console.log(gameSettings)
         let game = new MultiWordGame(elem,gameSettings);
         window.setTimeout(()=>{
             game.keyHandler({keyCode:settings[7]})
@@ -904,12 +904,12 @@ function downloadFile(filename,data) {
 
 function createReplayData(gameState) {
     let replay = gameState.replay;
-    console.log(replay)
-    console.log(replay.length)
+    // console.log(replay)
+    // console.log(replay.length)
     let arrayBuffer = new ArrayBuffer(20+((replay.length-12)*5/2));
     let settingsData = new DataView(arrayBuffer,0,20);
     let replayData = new DataView(arrayBuffer,20,arrayBuffer.byteLength-20);
-    console.log(replayData.byteLength)
+    // console.log(replayData.byteLength)
     settingsData.setUint8(0,1)                                          // replay file version
     settingsData.setUint32(1,replay[0],true)                            // seed
     settingsData.setUint8(5,encodeBinaryValue([replay[1],replay[2],replay[3],replay[4]]))   // isDaily, isHard, isCustom, isEasy
@@ -929,7 +929,7 @@ function createReplayData(gameState) {
             replayData.setUint8(x++,replay[y++])          // keypress charcode
         }
     }
-    console.log(new Uint8Array(arrayBuffer))
+    // console.log(new Uint8Array(arrayBuffer))
     return arrayBuffer;
 }
 
